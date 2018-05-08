@@ -1,0 +1,145 @@
+PASS 1:
+ 
+#include<stdio.h>
+#include<string.h>
+void main()
+{
+FILE *f1,*f2,*f3,*f4,*f5,*f6;
+int lc,sa,l,op1,o,len;
+char m1[20],la[20],op[20],otp[20];
+f1=fopen("input.txt","r");                     //input and optab are input to pass1
+f3=fopen("symtable.txt","w");
+f5=fopen("inter.txt","w");
+fscanf(f1,"%s %s %d",la,m1,&op1);   //read label, mneumonic and operand from input file
+if(strcmp(m1,"START")==0)
+{
+            sa=op1;                              //if START, set operand as starting address. location counter=sa
+            lc=sa;
+ fprintf(f5,"\t%s\t%s\t%d\n",la,m1,op1);        
+            }
+            else                                           //if not START, location counter=0
+{
+ lc=0;
+fscanf(f1,"%s %s",la,m1);
+while(!feof(f1))
+{
+fscanf(f1,"%s",op);
+ fprintf(f5,"\n%d\t%s\t%s\t%s\n",lc,la,m1,op); //print to intermediate file
+ if(strcmp(la,"-")!=0)
+            {                                              //if label!="-" print address and label to inter file
+fprintf(f3,"\n%d\t%s\n",lc,la);
+             }
+ f2=fopen("optab.txt","r");
+ fscanf(f2,"%s %d",otp,&o);                      //search for mneumonic in optab
+ while(!feof(f2))
+{
+ if(strcmp(m1,otp)==0)                          //if found
+{
+   lc=lc+3;                                     //add instruction length to lc
+   break;
+}
+fscanf(f2,"%s %d",otp,&o);
+}
+fclose(f2);
+if(strcmp(m1,"WORD")==0)                        //if opcode==WORD, add
+{
+ lc=lc+3;
+}
+else if(strcmp(m1,"RESW")==0)        
+{
+    op1=atoi(op);                                  //convert operand to integer
+    lc=lc+(3*op1);
+}
+else if(strcmp(m1,"BYTE")==0)
+{
+    if(op[0]=='X')                                  //1 byte if hexadecimal
+    lc=lc+1;
+    else
+    {
+      len=strlen(op)-2;                             //length of operand in bytes
+     lc=lc+len;}
+    }
+    else if(strcmp(m1,"RESB")==0)
+    {
+     op1=atoi(op);
+     lc=lc+op1;
+    }
+    fscanf(f1,"%s%s",la,m1);                         //read next input line
+    }                                                //end while
+    if(strcmp(m1,"END")==0)
+    {
+    fprintf(f5,"Program length =\n%d",lc-sa);
+    }
+    fclose(f1);
+    fclose(f3);
+    fclose(f5);  //  }
+PASS 2:
+ 
+#include<stdio.h>
+#include<string.h>
+#include<ctype.h>
+main()
+{
+FILE *fint,*ftab,*flen,*fsym,*fout;
+int op1[10],txtlen,txtlen1,i,j=0,len;
+char add[5],symadd[5],op[5],start[10],temp[30],line[20],label[20],mne[10],operand[10],symtab[10],opmne[10];
+fint=fopen("inter.txt","r");                     //intermediate file, optab and symbol table:
+flen=fopen("length.txt","r");
+ftab=fopen("optab.txt","r");
+fsym=fopen("symtable.txt","r");
+fout=fopen("output.txt","w");
+fscanf(fint,"%s%s%s%s",add,label,mne,operand);   //read first line from intermediate file
+if(strcmp(mne,"START")==0)
+{
+strcpy(start,operand);                           //copy starting address to start
+fscanf(flen,"%d",&len);
+}
+fprintf(fout,"H^%s^%s^%d\nT^00%s^",label,start,len,start);  //H copy 1000 24
+fscanf(fint,"%s%s%s%s",add,label,mne,operand);              //read next input line
+while(strcmp(mne,"END")!=0)                                 //while opcode!=END
+{
+fscanf(ftab,"%s%s",opmne,op);                              
+while(!feof(ftab))                                           //search optab for opcode
+{
+if(strcmp(mne,opmne)==0)                                    //if opcode is present
+{
+            fclose(ftab);
+            fscanf(fsym,"%s%s",symadd,symtab);
+            while(!feof(fsym))                                           //search symtab for operand
+            {
+if(strcmp(operand,symtab)==0)                                //if present
+{
+fprintf(fout,"%s%s^",op,symadd);        //write object code to output file
+break;
+}
+else
+fscanf(fsym,"%s%s",symadd,symtab);
+break;
+else
+fscanf(ftab,"%s%s",opmne,op);
+}
+if((strcmp(mne,"BYTE")==0)||(strcmp(mne,"WORD")==0))  //if opcode not present in optab
+{                                                                                               // and equal to BYTE or WORD
+if(strcmp(mne,"WORD")==0)                                   
+fprintf(fout,"0000%s^",operand);                   //if WORD, convert constant to object code
+else
+{
+len=strlen(operand);
+for(i=2;i<len;i++)
+{
+fprintf(fout,"%d",operand[i]);                               
+}
+fprintf(fout,"^");
+}
+}
+fscanf(fint,"%s%s%s%s",add,label,mne,operand);                //read next input line
+ftab=fopen("optab.txt","r");                                   
+fseek(ftab,SEEK_SET,0);                                       //set file pointer to beginning of optab file
+}
+fprintf(fout,"\nE^00%s",start);                                //write End record
+fclose(fint);
+fclose(ftab);
+fclose(fsym);
+fclose(flen);
+fclose(fout);
+}
